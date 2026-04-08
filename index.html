@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAC Back-End</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #ffffff;
+  --surface: #fff;
+  --border: #e4e0d8;
+  --border-light: #eeeae3;
+  --forest: #1a4f7a;
+  --forest-mid: #245f8a;
+  --forest-light: #eef4fa;
+  --forest-lighter: #f4f8fc;
+  --text: #1a1a18;
+  --text-mid: #4a4a45;
+  --text-muted: #6b6960;
+  --text-faint: #a8a49c;
+  --red: #c0392b;
+  --red-bg: #fdf0ef;
+  --amber: #b7621a;
+  --amber-bg: #fdf6ee;
+  --green: #1e6b3a;
+  --green-bg: #edf5f0;
+  --blue: #1a4f7a;
+  --blue-bg: #eef4fa;
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 2rem 1.5rem 4rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--forest);
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.card-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+input, select {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus, select:focus {
+  border-color: var(--forest-mid);
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  align-items: flex-end;
+}
+
+.row > * { flex: 1; }
+
+.btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--forest);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--forest-mid); }
+
+.btn-secondary {
+  background: var(--forest-light);
+  color: var(--forest);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--forest-lighter); }
+
+.btn-danger {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid #f0d0cc;
+}
+.btn-danger:hover { background: #fbe3e0; }
+
+.btn-copy {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border: 1px solid #cde0f0;
+  font-size: 11px;
+  padding: 4px 10px;
+}
+.btn-copy:hover { background: #dfeaf5; }
+.btn-copy.copied { background: var(--green-bg); color: var(--green); border-color: #b8d9c4; }
+
+.btn-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.aggregate-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  align-items: flex-end;
+}
+.aggregate-row .size-col { flex: 0 0 70px; }
+.aggregate-row .supplier-col { flex: 0 0 80px; }
+.aggregate-row .name-col { flex: 1; }
+.aggregate-row .pct-col { flex: 0 0 70px; }
+.aggregate-row .del-col { flex: 0 0 36px; }
+
+.aggregate-row .del-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+.aggregate-row .del-btn:hover { color: var(--red); border-color: var(--red); }
+
+.tz-section {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background: var(--bg);
+}
+
+.tz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.tz-header h3 {
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--forest);
+}
+
+.checkbox-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.checkbox-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-mid);
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--forest);
+}
+
+.output-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.output-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--forest-lighter);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.output-header h4 {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--forest);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.output-body {
+  padding: 1rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 1rem;
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--forest-mid);
+  background: var(--forest-lighter);
+  color: var(--forest-mid);
+}
+.drop-zone input { display: none; }
+
+.api-key-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  align-items: flex-end;
+}
+.api-key-row > :first-child { flex: 1; }
+.api-key-row > :last-child { flex: 0 0 auto; }
+
+.status-msg {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+}
+.status-msg.info { background: var(--blue-bg); color: var(--blue); }
+.status-msg.error { background: var(--red-bg); color: var(--red); }
+.status-msg.success { background: var(--green-bg); color: var(--green); }
+
+.hidden { display: none; }
+
+.pct-total {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  margin-top: 0.25rem;
+}
+.pct-total.valid { color: var(--green); }
+.pct-total.invalid { color: var(--red); }
+
+.tool-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.tool-tab {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tool-tab:hover:not(:disabled) { background: var(--blue-bg); color: var(--blue); border-color: #cde0f0; }
+.tool-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+.section-header {
+  margin-bottom: 1.25rem;
+}
+.section-header h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+.section-header p {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.tool-section { }
+
+#loginScreen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+.login-box {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+.login-box label { text-align: left; }
+#loginScreen.hidden { display: none; }
+
+.api-panel {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  width: 360px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  z-index: 100;
+}
+.api-panel.hidden { display: none; }
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+.verify-section {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+}
+.verify-section h4 {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--blue);
+  margin-bottom: 0.5rem;
+}
+.verify-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 3px 0;
+  color: var(--text-mid);
+}
+.verify-row .label { color: var(--text-faint); }
+.verify-row .value { font-weight: 500; color: var(--text); }
+.verify-agg {
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+  color: var(--text-mid);
+  padding: 2px 0;
+}
+.verify-warning {
+  font-size: 12px;
+  color: var(--red);
+  font-style: italic;
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1 style="color: var(--blue); margin-bottom: 0.25rem;">DAC Back-End</h1>
+    <p class="subtitle" style="margin-bottom: 1.5rem;">Internal Tools</p>
+    <label>Password</label>
+    <input type="password" id="loginPassword" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkLogin()" />
+    <div id="loginError" class="status-msg error" style="display:none; margin-top:0.5rem;">Incorrect password</div>
+    <button class="btn" onclick="checkLogin()" style="width:100%; margin-top:0.75rem; padding:10px; background:var(--blue); color:#fff;">Login</button>
+  </div>
+</div>
+
+<!-- Main App (hidden until login) -->
+<div id="mainApp" class="hidden">
+<div style="display:flex; justify-content:space-between; align-items:flex-start;">
+  <div>
+    <h1 style="color: var(--blue);">DAC Back-End</h1>
+    <p class="subtitle">Internal Tools</p>
+  </div>
+  <div style="position:relative;">
+    <button class="btn btn-secondary" onclick="logout()" style="font-size:11px; padding:6px 12px;">Logout</button>
+  </div>
+</div>
+
+<!-- Tool Navigation -->
+<div class="tool-nav">
+  <button class="tool-tab active" onclick="showTool('terrazzo', this)">Terrazzo Orders</button>
+  <button class="tool-tab" onclick="showTool('placeholder1', this)" disabled style="opacity:0.4">Coming Soon</button>
+</div>
+
+<!-- ==================== TERRAZZO ORDER CALCULATOR ==================== -->
+<div id="tool-terrazzo" class="tool-section">
+
+<div class="section-header">
+  <h2>Terrazzo Order Calculator</h2>
+  <p>Generate formatted material lists for suppliers</p>
+</div>
+
+<!-- Document Import -->
+<div class="card">
+  <div class="card-title">Import Documents (Optional)</div>
+  <div id="dropApiStatus"></div>
+  <div class="drop-zone" id="dropZone">
+    <div>Drop files here, or click to browse</div>
+    <div style="font-size:11px; margin-top:6px; color:var(--text-faint)">Sample card, square footage email, and/or super sheet (PDF or image). Up to 3 files.</div>
+    <input type="file" id="fileInput" accept="image/*,.pdf" multiple />
+  </div>
+  <div id="fileList" style="margin-top:0.5rem;"></div>
+</div>
+
+<!-- Terrazzo Types -->
+<div class="card">
+  <div class="card-title">Terrazzo Types</div>
+  <div id="tzContainer"></div>
+  <button class="btn btn-secondary" onclick="addTzType()">+ Add Terrazzo Type</button>
+</div>
+
+<!-- Job Info -->
+<div class="card">
+  <div class="card-title">Job Information</div>
+  <div class="row">
+    <div>
+      <label>Job Name</label>
+      <input type="text" id="jobName" placeholder="e.g. College of Charleston Stern Center" />
+    </div>
+    <div>
+      <label>Total Job SF (auto-calculated or override)</label>
+      <input type="number" id="totalSF" placeholder="Auto-calculated from TZ types" />
+    </div>
+  </div>
+  <div class="checkbox-row">
+    <label><input type="checkbox" id="chkMVT" checked /> MVT (Full Coverage)</label>
+    <label><input type="checkbox" id="chkIso" checked /> Isocrack (Full Coverage)</label>
+    <label><input type="checkbox" id="chkPrimer" checked /> Primer (Full Coverage)</label>
+  </div>
+</div>
+
+<!-- Generate -->
+<div style="margin-bottom: 1.25rem;">
+  <button class="btn btn-primary" onclick="generate()" style="width:100%; padding: 12px;">Generate Material Lists</button>
+</div>
+
+<!-- Output -->
+<div id="outputSection" class="hidden">
+  <div class="card">
+    <div class="card-title">Material Lists</div>
+    <div id="calcSummary" style="font-size:13px; color:var(--text-mid); margin-bottom:1rem;"></div>
+    <div id="outputBlocks"></div>
+  </div>
+</div>
+
+</div><!-- end tool-terrazzo -->
+
+<!-- ==================== PLACEHOLDER FOR FUTURE TOOLS ==================== -->
+<div id="tool-placeholder1" class="tool-section hidden">
+  <div class="section-header">
+    <h2>More Tools Coming Soon</h2>
+    <p>Additional DAC back-end tools will appear here</p>
+  </div>
+</div>
+
+<!-- Verification Modal -->
+<div id="verifyModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3 style="font-family:'Cormorant Garamond',serif; font-size:20px; color:var(--blue); margin-bottom:1rem;">Verify Extracted Data</h3>
+    <div id="verifyContent" style="max-height:60vh; overflow-y:auto;"></div>
+    <div style="display:flex; gap:0.5rem; margin-top:1.25rem;">
+      <button class="btn" style="flex:1; background:var(--blue); color:#fff; padding:10px;" onclick="confirmExtraction()">Confirm & Generate</button>
+      <button class="btn btn-secondary" style="flex:1; padding:10px;" onclick="closeVerifyModal()">Edit Manually</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end mainApp -->
+
+<script>
+// --- Verification Modal ---
+function showVerifyModal(result) {
+  let html = '';
+
+  // Job info
+  html += '<div class="verify-section">';
+  html += '<h4>Job Information</h4>';
+  if (result.job_name) html += `<div class="verify-row"><span class="label">Job Name</span><span class="value">${result.job_name}</span></div>`;
+  else html += '<div class="verify-warning">Job name not found</div>';
+  if (result.total_job_sf) html += `<div class="verify-row"><span class="label">Total Job SF</span><span class="value">${result.total_job_sf.toLocaleString()} SF</span></div>`;
+  else html += '<div class="verify-warning">Total job SF not found</div>';
+  html += `<div class="verify-row"><span class="label">MVT</span><span class="value">${result.mvt === true ? 'Full Coverage' : result.mvt === false ? 'Not Included' : 'Not found'}</span></div>`;
+  html += `<div class="verify-row"><span class="label">Isocrack</span><span class="value">${result.isocrack === true ? 'Full Coverage' : result.isocrack === false ? 'Not Included' : 'Not found'}</span></div>`;
+  html += `<div class="verify-row"><span class="label">Primer</span><span class="value">${result.primer === true ? 'Full Coverage' : result.primer === false ? 'Not Included' : 'Not found'}</span></div>`;
+  html += '</div>';
+
+  // Each sample
+  if (result.samples) {
+    result.samples.forEach((s, i) => {
+      html += '<div class="verify-section">';
+      html += `<h4>${s.label || 'TZ-' + (i+1)}</h4>`;
+      if (s.sf) html += `<div class="verify-row"><span class="label">Square Footage</span><span class="value">${s.sf.toLocaleString()} SF</span></div>`;
+      else html += '<div class="verify-warning">Square footage not found — you\'ll need to enter it manually</div>';
+      html += `<div class="verify-row"><span class="label">Epoxy</span><span class="value">${s.epoxy_supplier || '?'} — ${s.epoxy_name || '?'} #${s.epoxy_number || '?'}</span></div>`;
+      html += `<div class="verify-row"><span class="label">Filler</span><span class="value">${s.filler || '?'}</span></div>`;
+      html += '<div style="margin-top:6px;"><span class="label">Aggregates:</span></div>';
+      if (s.aggregates && s.aggregates.length > 0) {
+        let pctTotal = 0;
+        s.aggregates.forEach(a => {
+          pctTotal += a.pct || 0;
+          html += `<div class="verify-agg">${a.size} ${a.supplier} ${a.name} — ${a.pct}%</div>`;
+        });
+        if (pctTotal !== 100) html += `<div class="verify-warning">Aggregate total: ${pctTotal}% (should be 100%)</div>`;
+      } else {
+        html += '<div class="verify-warning">No aggregates found</div>';
+      }
+      html += '</div>';
+    });
+  }
+
+  document.getElementById('verifyContent').innerHTML = html;
+  document.getElementById('verifyModal').classList.remove('hidden');
+}
+
+function confirmExtraction() {
+  document.getElementById('verifyModal').classList.add('hidden');
+  generate();
+}
+
+function closeVerifyModal() {
+  document.getElementById('verifyModal').classList.add('hidden');
+  // Form is already populated — user can edit and hit Generate manually
+}
+
+// --- Logout ---
+function logout() {
+  sessionStorage.removeItem('dac_auth');
+  window.location.reload();
+}
+
+// --- API Key (proxied through Cloudflare Worker) ---
+const API_PROXY_URL = 'https://dac-api-proxy.blackburnpropertyreno-cell.workers.dev';
+
+// --- Authentication ---
+const VALID_HASHES = [
+  '94dff046da09863d985d489417860b40171e67f104c39b9f22efaf64612d6c32',
+  '7b5ef220c01b3846c23476ab49977185fa3c2cc8a56f46498866148b6801122b',
+  '8f6b87756fde6ebeced7d47cd7e0e1ddebef3a9dbb3b73efe6cb29a1600bbd89',
+  'fb13b371f63529fb7d0c632852a5ab1b503c8998444c1fc3ad9d09c93044f674'
+];
+
+async function hashPassword(pw) {
+  const data = new TextEncoder().encode(pw);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function checkLogin() {
+  const pw = document.getElementById('loginPassword').value;
+  const hash = await hashPassword(pw);
+  if (VALID_HASHES.includes(hash)) {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    sessionStorage.setItem('dac_auth', 'true');
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+
+// Auto-login if already authenticated this session
+if (sessionStorage.getItem('dac_auth') === 'true') {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+}
+
+// --- Tool Navigation ---
+function showTool(toolId, btn) {
+  document.querySelectorAll('.tool-section').forEach(s => s.classList.add('hidden'));
+  document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tool-' + toolId).classList.remove('hidden');
+  btn.classList.add('active');
+}
+
+let tzCounter = 0;
+
+// --- API Key ---
+
+function showStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.className = 'status-msg ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// --- Drop Zone ---
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+let pendingFiles = [];
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  addFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', e => { addFiles(e.target.files); });
+
+function addFiles(fileList) {
+  for (const file of fileList) {
+    const mt = file.type || '';
+    if (mt.startsWith('image/') || mt === 'application/pdf') {
+      if (pendingFiles.length < 3) pendingFiles.push(file);
+    } else {
+      showStatus('dropApiStatus', `"${file.name}" not supported — use PDF or image files.`, 'error');
+    }
+  }
+  renderFileList();
+}
+
+function renderFileList() {
+  const el = document.getElementById('fileList');
+  if (pendingFiles.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = pendingFiles.map((f, i) =>
+    `<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:4px; font-size:12px; color:var(--text-mid);">
+      <span style="flex:1">${f.name}</span>
+      <button class="btn btn-danger" style="font-size:10px; padding:2px 8px;" onclick="removeFile(${i})">Remove</button>
+    </div>`
+  ).join('') +
+  `<button class="btn btn-primary" style="margin-top:0.5rem; width:100%;" onclick="processFiles()">Extract Data from ${pendingFiles.length} File${pendingFiles.length > 1 ? 's' : ''}</button>`;
+}
+
+function removeFile(i) {
+  pendingFiles.splice(i, 1);
+  renderFileList();
+}
+
+async function processFiles() {
+  if (pendingFiles.length === 0) return;
+
+  showStatus('dropApiStatus', `Extracting data from ${pendingFiles.length} file(s)...`, 'info');
+
+  try {
+    // Build content blocks for all files
+    const contentBlocks = [];
+    for (const file of pendingFiles) {
+      const base64 = await fileToBase64(file);
+      const mediaType = file.type || 'image/png';
+      if (mediaType === 'application/pdf') {
+        contentBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } });
+      } else {
+        contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } });
+      }
+    }
+
+    contentBlocks.push({
+      type: 'text',
+      text: `You are given documents about a terrazzo flooring project. Extract ALL information and return JSON.
+
+DOCUMENT TYPES you may see:
+1. SAMPLE CARD - has terrazzo mix details. Each sample has a label like "TER1-111125" or "TER2-121725". TER1 = TZ-1, TER2 = TZ-2, etc. Each sample lists: Epoxy (supplier + color + number), Filler, and a table of aggregates (Size, Supplier, Aggregate name, %).
+2. EMAIL/DOCUMENT - shows square footages per terrazzo type (e.g. "TZ-1: 9,900 SF", "TZ-2: 371 SF")
+3. SUPER SHEET - shows total job "Sqft", and whether MVT/Isocrack/Primer are "Full Coverage Included"
+
+CRITICAL RULES:
+- TER1 on a sample card = TZ-1, TER2 = TZ-2, etc. Also T1 = TZ-1, T2 = TZ-2, Area 1 = TZ-1, Area 2 = TZ-2, etc. Always normalize to TZ-1, TZ-2 format in output.
+- Each sample card has its OWN epoxy, filler, and aggregate table. Do NOT mix them up.
+- Read the aggregate table carefully: Size column (#0, #1, #2), Supplier column (SA, TM), Name column, Percentage column.
+- SA = Southern Aggregate, TM = Terrazzo and Marble Supply
+- "sf" per terrazzo type comes from the email/document, NOT the sample card.
+- "total_job_sf" comes from the super sheet "Sqft" field.
+- Order samples as TZ-1 first, TZ-2 second, etc.
+
+Return this exact JSON structure (no markdown, no code fences):
+{
+  "samples": [
+    {
+      "label": "TZ-1",
+      "epoxy_supplier": "TM",
+      "epoxy_name": "Spare White",
+      "epoxy_number": "11449",
+      "filler": "ATF-20",
+      "sf": 9900,
+      "aggregates": [
+        {"size": "#0", "supplier": "SA", "name": "Ultra White", "pct": 10}
+      ]
+    }
+  ],
+  "job_name": "College of Charleston Stern Center",
+  "total_job_sf": 10329,
+  "mvt": true,
+  "isocrack": true,
+  "primer": true
+}
+
+- "job_name" is the project/job name from the super sheet or email subject.
+Set any value to null if not found in the documents.`
+    });
+
+    const response = await fetch(API_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: contentBlocks }]
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const text = data.content[0].text;
+    const cleanText = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const result = JSON.parse(cleanText);
+
+    // Populate TZ types from samples
+    if (result.samples && result.samples.length > 0) {
+      document.getElementById('tzContainer').innerHTML = '';
+      tzCounter = 0;
+
+      result.samples.forEach((sample, i) => {
+        addTzType();
+        const section = document.querySelectorAll('.tz-section')[i];
+        const idx = parseInt(section.dataset.idx);
+
+        section.querySelector(`[name="epoxy_supplier_${idx}"]`).value = sample.epoxy_supplier || 'TM';
+        section.querySelector(`[name="epoxy_name_${idx}"]`).value = sample.epoxy_name || '';
+        section.querySelector(`[name="epoxy_num_${idx}"]`).value = sample.epoxy_number || '';
+        section.querySelector(`[name="filler_${idx}"]`).value = sample.filler || 'ATF-20';
+        if (sample.sf) section.querySelector(`[name="sf_${idx}"]`).value = sample.sf;
+
+        const aggContainer = section.querySelector('.agg-container');
+        aggContainer.innerHTML = '';
+        if (sample.aggregates) {
+          sample.aggregates.forEach(agg => {
+            addAggregateRow(idx, aggContainer, agg);
+          });
+        }
+        updatePctTotal(idx);
+      });
+    }
+
+    // Populate job info
+    if (result.total_job_sf) document.getElementById('totalSF').value = result.total_job_sf;
+    if (result.job_name) document.getElementById('jobName').value = result.job_name;
+    if (result.mvt !== null) document.getElementById('chkMVT').checked = !!result.mvt;
+    if (result.isocrack !== null) document.getElementById('chkIso').checked = !!result.isocrack;
+    if (result.primer !== null) document.getElementById('chkPrimer').checked = !!result.primer;
+
+    const count = result.samples ? result.samples.length : 0;
+    let msg = `Extracted ${count} terrazzo type(s)`;
+    if (result.total_job_sf) msg += `, total job SF: ${result.total_job_sf}`;
+    msg += '. Review and adjust below.';
+    showStatus('dropApiStatus', msg, 'success');
+
+    // Clear pending files
+    pendingFiles = [];
+    renderFileList();
+
+    // Show verification modal
+    showVerifyModal(result);
+
+  } catch (err) {
+    showStatus('dropApiStatus', 'Extraction failed: ' + err.message, 'error');
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// --- Terrazzo Types ---
+function addTzType() {
+  const idx = tzCounter++;
+  const div = document.createElement('div');
+  div.className = 'tz-section';
+  div.dataset.idx = idx;
+  div.innerHTML = `
+    <div class="tz-header">
+      <h3>TZ-${idx + 1}</h3>
+      <button class="btn btn-danger" onclick="removeTz(this)" style="font-size:11px; padding:4px 10px;">Remove</button>
+    </div>
+    <div class="row">
+      <div style="flex:0 0 80px">
+        <label>Epoxy Supplier</label>
+        <select name="epoxy_supplier_${idx}">
+          <option value="TM">TM</option>
+          <option value="SA">SA</option>
+          <option value="MTT">MTT</option>
+        </select>
+      </div>
+      <div>
+        <label>Epoxy Color Name</label>
+        <input type="text" name="epoxy_name_${idx}" placeholder="e.g. Spare White" />
+      </div>
+      <div style="flex:0 0 120px">
+        <label>Product #</label>
+        <input type="text" name="epoxy_num_${idx}" placeholder="e.g. 11449" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Filler</label>
+        <input type="text" name="filler_${idx}" value="ATF-20" />
+      </div>
+      <div>
+        <label>Square Footage</label>
+        <input type="number" name="sf_${idx}" placeholder="e.g. 9900" />
+      </div>
+    </div>
+    <label style="margin-top:0.5rem">Aggregates</label>
+    <div class="aggregate-row" style="margin-bottom:4px;">
+      <div class="size-col"><span style="font-size:11px;color:var(--text-faint)">Size</span></div>
+      <div class="supplier-col"><span style="font-size:11px;color:var(--text-faint)">Supplier</span></div>
+      <div class="name-col"><span style="font-size:11px;color:var(--text-faint)">Aggregate Name</span></div>
+      <div class="pct-col"><span style="font-size:11px;color:var(--text-faint)">%</span></div>
+      <div class="del-col"></div>
+    </div>
+    <div class="agg-container" data-tz="${idx}"></div>
+    <div class="pct-total" id="pctTotal_${idx}"></div>
+    <button class="btn btn-secondary" onclick="addAggregateRow(${idx})" style="margin-top:0.5rem; font-size:11px;">+ Add Aggregate</button>
+  `;
+  document.getElementById('tzContainer').appendChild(div);
+  addAggregateRow(idx);
+}
+
+function addAggregateRow(tzIdx, container, data) {
+  if (!container) container = document.querySelector(`.agg-container[data-tz="${tzIdx}"]`);
+  const row = document.createElement('div');
+  row.className = 'aggregate-row';
+  row.innerHTML = `
+    <div class="size-col">
+      <select class="agg-size">
+        <option value="#0" ${data && data.size === '#0' ? 'selected' : ''}>#0</option>
+        <option value="#1" ${data && data.size === '#1' ? 'selected' : ''}>#1</option>
+        <option value="#2" ${data && data.size === '#2' ? 'selected' : ''}>#2</option>
+        <option value="#3" ${data && data.size === '#3' ? 'selected' : ''}>#3</option>
+      </select>
+    </div>
+    <div class="supplier-col">
+      <select class="agg-supplier">
+        <option value="SA" ${data && data.supplier === 'SA' ? 'selected' : ''}>SA</option>
+        <option value="TM" ${data && data.supplier === 'TM' ? 'selected' : ''}>TM</option>
+        <option value="MTT" ${data && data.supplier === 'MTT' ? 'selected' : ''}>MTT</option>
+      </select>
+    </div>
+    <div class="name-col">
+      <input type="text" class="agg-name" placeholder="e.g. Ultra White" value="${data ? data.name : ''}" />
+    </div>
+    <div class="pct-col">
+      <input type="number" class="agg-pct" placeholder="%" min="0" max="100" value="${data ? data.pct : ''}" oninput="updatePctTotal(${tzIdx})" />
+    </div>
+    <div class="del-col">
+      <button class="del-btn" onclick="removeAgg(this, ${tzIdx})">×</button>
+    </div>
+  `;
+  container.appendChild(row);
+}
+
+function removeAgg(btn, tzIdx) {
+  btn.closest('.aggregate-row').remove();
+  updatePctTotal(tzIdx);
+}
+
+function removeTz(btn) {
+  btn.closest('.tz-section').remove();
+}
+
+function updatePctTotal(tzIdx) {
+  const rows = document.querySelectorAll(`.agg-container[data-tz="${tzIdx}"] .agg-pct`);
+  let total = 0;
+  rows.forEach(r => { total += parseFloat(r.value) || 0; });
+  const el = document.getElementById(`pctTotal_${tzIdx}`);
+  el.textContent = `Total: ${total}%`;
+  el.className = 'pct-total ' + (total === 100 ? 'valid' : 'invalid');
+}
+
+// --- Calculations ---
+function calcWaste(sf) {
+  if (sf <= 2000) return 50;
+  if (sf <= 6000) return 150;
+  if (sf <= 11000) return 200;
+  return Math.ceil(sf * 0.02 / 50) * 50;
+}
+
+function generate() {
+  const sections = document.querySelectorAll('.tz-section');
+  if (sections.length === 0) { alert('Add at least one terrazzo type.'); return; }
+
+  const tzTypes = [];
+  let autoTotalSF = 0;
+
+  sections.forEach((sec, i) => {
+    const idx = sec.dataset.idx;
+    const sf = parseFloat(sec.querySelector(`[name="sf_${idx}"]`).value) || 0;
+    const waste = calcWaste(sf);
+    const adjSF = sf + waste;
+    const mixes = Math.ceil(adjSF / 50);
+    const totalLbs = mixes * 175;
+
+    autoTotalSF += sf;
+
+    const aggregates = [];
+    sec.querySelectorAll(`.agg-container[data-tz="${idx}"] .aggregate-row`).forEach(row => {
+      aggregates.push({
+        size: row.querySelector('.agg-size').value,
+        supplier: row.querySelector('.agg-supplier').value,
+        name: row.querySelector('.agg-name').value,
+        pct: parseFloat(row.querySelector('.agg-pct').value) || 0
+      });
+    });
+
+    tzTypes.push({
+      label: `TZ-${i + 1}`,
+      sf, waste, adjSF, mixes, totalLbs,
+      epoxy_supplier: sec.querySelector(`[name="epoxy_supplier_${idx}"]`).value,
+      epoxy_name: sec.querySelector(`[name="epoxy_name_${idx}"]`).value,
+      epoxy_num: sec.querySelector(`[name="epoxy_num_${idx}"]`).value,
+      filler: sec.querySelector(`[name="filler_${idx}"]`).value,
+      aggregates
+    });
+  });
+
+  const totalSFInput = parseFloat(document.getElementById('totalSF').value);
+  const totalJobSF = totalSFInput || autoTotalSF;
+  const totalMixes = tzTypes.reduce((s, t) => s + t.mixes, 0);
+
+  const includeMVT = document.getElementById('chkMVT').checked;
+  const includeIso = document.getElementById('chkIso').checked;
+  const includePrimer = document.getElementById('chkPrimer').checked;
+
+  // Coverage products
+  const mvtUnits = includeMVT ? Math.ceil(totalJobSF / 425) : 0;
+  const isoUnits = includeIso ? Math.ceil(totalJobSF / 400) : 0;
+  const primerUnits = includePrimer ? Math.ceil(totalJobSF / 600) : 0;
+
+  // Group by supplier
+  const suppliers = {};
+
+  tzTypes.forEach(tz => {
+    tz.aggregates.forEach(agg => {
+      const key = agg.supplier;
+      if (!suppliers[key]) suppliers[key] = { aggregates: [], epoxies: [] };
+      const lbs = tz.totalLbs * (agg.pct / 100);
+      const bags = Math.ceil(lbs / 50);
+      suppliers[key].aggregates.push({
+        size: agg.size, name: agg.name, bags
+      });
+    });
+
+    // Epoxy Part A
+    const eKey = tz.epoxy_supplier;
+    if (!suppliers[eKey]) suppliers[eKey] = { aggregates: [], epoxies: [] };
+    suppliers[eKey].epoxies.push({
+      name: tz.epoxy_name,
+      num: tz.epoxy_num,
+      gallons: tz.mixes * 5
+    });
+  });
+
+  // Build summary
+  let summary = '';
+  tzTypes.forEach(tz => {
+    summary += `${tz.label}: ${tz.sf} SF + ${tz.waste} waste = ${tz.adjSF} SF → ${tz.mixes} mixes\n`;
+  });
+  summary += `Total: ${totalMixes} mixes | Job SF: ${totalJobSF}`;
+  document.getElementById('calcSummary').textContent = summary;
+
+  // Build output blocks
+  const outputDiv = document.getElementById('outputBlocks');
+  outputDiv.innerHTML = '';
+
+  const supplierNames = {
+    'SA': { name: 'SA - Southern Aggregate', email: 'orders@southernaggregates.com' },
+    'TM': { name: 'TNM - Terrazzo and Marble Supply', email: 'jreynolds@tmsupply.com' },
+    'MTT': { name: 'MTT', email: '' }
+  };
+
+  // SA and other aggregate-only suppliers
+  Object.keys(suppliers).forEach(key => {
+    if (key === 'TM') return; // handle TM separately since it gets coverage products
+    const sup = suppliers[key];
+    if (sup.aggregates.length === 0 && sup.epoxies.length === 0) return;
+
+    const info = supplierNames[key] || { name: key, email: '' };
+    let text = `${info.name}\n${info.email}\n\n`;
+
+    // Combine duplicate aggregates
+    const aggMap = {};
+    sup.aggregates.forEach(a => {
+      const k = `${a.size}|${a.name}`;
+      aggMap[k] = (aggMap[k] || 0) + a.bags;
+    });
+    Object.entries(aggMap).forEach(([k, bags]) => {
+      const [size, name] = k.split('|');
+      text += `${size} ${name} - ${bags} bags\n`;
+    });
+
+    // Epoxies (if any non-TM supplier has epoxy)
+    sup.epoxies.forEach(e => {
+      text += `${e.gallons} GL ${e.name} ${e.num}\n`;
+    });
+
+    addOutputBlock(outputDiv, info.name, text.trim(), info.email);
+  });
+
+  // TM block (aggregate + epoxy + Part B + coverage)
+  if (suppliers['TM'] || includeMVT || includeIso || includePrimer) {
+    const tmSup = suppliers['TM'] || { aggregates: [], epoxies: [] };
+    const info = supplierNames['TM'];
+    let text = `${info.name}\n${info.email}\n\n`;
+
+    // Aggregates first
+    const aggMap = {};
+    tmSup.aggregates.forEach(a => {
+      const k = `${a.size}|${a.name}`;
+      aggMap[k] = (aggMap[k] || 0) + a.bags;
+    });
+    Object.entries(aggMap).forEach(([k, bags]) => {
+      const [size, name] = k.split('|');
+      text += `${size} ${name} - ${bags} bags\n`;
+    });
+
+    // Epoxies Part A
+    tmSup.epoxies.forEach(e => {
+      text += `${e.gallons} GL ${e.name} ${e.num}\n`;
+    });
+
+    // Part B
+    text += `${totalMixes} GL Part B\n`;
+
+    // Coverage
+    if (mvtUnits) text += `${mvtUnits} UN MVT\n`;
+    if (isoUnits) text += `${isoUnits} UN Isocrack\n`;
+    if (primerUnits) text += `${primerUnits} UN Primer\n`;
+
+    addOutputBlock(outputDiv, info.name, text.trim(), info.email);
+  }
+
+  // DAC block (filler)
+  const fillerTypes = {};
+  tzTypes.forEach(tz => {
+    fillerTypes[tz.filler] = (fillerTypes[tz.filler] || 0);
+  });
+  let dacText = `DAC\n\n${totalMixes} Bags ${tzTypes[0].filler}`;
+  addOutputBlock(outputDiv, 'DAC - Warehouse', dacText.trim());
+
+  // Add download summary button
+  const dlBtn = document.createElement('button');
+  dlBtn.className = 'btn btn-primary';
+  dlBtn.style.cssText = 'width:100%; margin-top:0.75rem; padding:10px;';
+  dlBtn.textContent = 'Download Order Summary';
+  dlBtn.onclick = () => downloadSummary(tzTypes, totalMixes, totalJobSF, mvtUnits, isoUnits, primerUnits);
+  outputDiv.appendChild(dlBtn);
+
+  document.getElementById('outputSection').classList.remove('hidden');
+}
+
+function addOutputBlock(container, title, text, email) {
+  const block = document.createElement('div');
+  block.className = 'output-block';
+  const emailAttr = email ? `data-email="${escapeHtml(email)}"` : '';
+  const draftBtn = email ? `<button class="btn btn-copy" onclick="draftOutlook(this)" style="margin-right:4px;">Draft Email</button>` : '';
+  block.innerHTML = `
+    <div class="output-header" ${emailAttr}>
+      <h4>${title}</h4>
+      <div style="display:flex;gap:4px;">
+        ${draftBtn}
+        <button class="btn btn-copy" onclick="copyBlock(this)">Copy</button>
+      </div>
+    </div>
+    <div class="output-body">${escapeHtml(text)}</div>
+  `;
+  container.appendChild(block);
+}
+
+function draftOutlook(btn) {
+  const block = btn.closest('.output-block');
+  const body = block.querySelector('.output-body').textContent;
+  const email = block.querySelector('.output-header').dataset.email || '';
+
+  const eml = [
+    `To: ${email}`,
+    `Subject: Material Order`,
+    `X-Unsent: 1`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/plain; charset=utf-8`,
+    ``,
+    body
+  ].join('\r\n');
+
+  const blob = new Blob([eml], { type: 'message/rfc822' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `order-${email.split('@')[0] || 'draft'}.eml`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  btn.textContent = 'Downloaded!';
+  setTimeout(() => { btn.textContent = 'Draft Email'; }, 2000);
+}
+
+function copyBlock(btn) {
+  const text = btn.closest('.output-block').querySelector('.output-body').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function downloadSummary(tzTypes, totalMixes, totalJobSF, mvtUnits, isoUnits, primerUnits) {
+  const jobName = document.getElementById('jobName').value || 'Untitled Job';
+  const today = new Date();
+  const dateStr = `${today.getMonth()+1}-${today.getDate()}-${today.getFullYear()}`;
+
+  // Build full summary text
+  let doc = `ORDER SUMMARY\n`;
+  doc += `Job: ${jobName}\n`;
+  doc += `Date: ${dateStr}\n`;
+  doc += `${'='.repeat(50)}\n\n`;
+
+  // Per TZ breakdown
+  tzTypes.forEach(tz => {
+    doc += `${tz.label}: ${tz.sf} SF + ${tz.waste} waste = ${tz.adjSF} SF | ${tz.mixes} mixes\n`;
+  });
+  doc += `Total Mixes: ${totalMixes} | Total Job SF: ${totalJobSF}\n`;
+  doc += `\n${'='.repeat(50)}\n\n`;
+
+  // Collect all output blocks
+  document.querySelectorAll('.output-body').forEach(block => {
+    doc += block.textContent + '\n\n---\n\n';
+  });
+
+  // Coverage summary
+  if (mvtUnits || isoUnits || primerUnits) {
+    doc += `COVERAGE PRODUCTS\n`;
+    if (mvtUnits) doc += `MVT: ${mvtUnits} UN (${totalJobSF} SF / 425)\n`;
+    if (isoUnits) doc += `Isocrack: ${isoUnits} UN (${totalJobSF} SF / 400)\n`;
+    if (primerUnits) doc += `Primer: ${primerUnits} UN (${totalJobSF} SF / 600)\n`;
+  }
+
+  const blob = new Blob([doc], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeJobName = jobName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
+  a.download = `${safeJobName}_${dateStr}_OrderSummary.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Start with one TZ type
+addTzType();
+</script>
+</body>
+</html>
