@@ -3085,7 +3085,20 @@ const CITY_GEO = {
   'Kansas City, MO':[39.10,-94.58],'St. Louis, MO':[38.63,-90.20],
   'San Diego, CA':[32.72,-117.16],'San Francisco, CA':[37.77,-122.42],'Seattle, WA':[47.61,-122.33],
   'Portland, OR':[45.52,-122.68],'Las Vegas, NV':[36.17,-115.14],'Salt Lake City, UT':[40.76,-111.89],
-  'Albuquerque, NM':[35.08,-106.65],'Reno, NV':[39.53,-119.81]
+  'Albuquerque, NM':[35.08,-106.65],'Reno, NV':[39.53,-119.81],
+  // DAC job cities not in main list
+  'Miami Beach, FL':[25.79,-80.13],'Wesley Chapel, FL':[28.24,-82.33],'Myrtle Beach, SC':[33.69,-78.89],
+  'MCAS Cherry Point, NC':[34.90,-76.88],'St. Johns, FL':[30.08,-81.55],'Huntsvile, AL':[34.73,-86.59],
+  'Huntsville, AL':[34.73,-86.59],'Westchester, FL':[25.75,-80.35],'Chattanooga, TN':[35.05,-85.31],
+  'Winter Park, FL':[28.60,-81.34],'Spartanburg, SC':[34.95,-81.93],'Deltona, FL':[28.90,-81.26],
+  'York, SC':[34.99,-81.24],'Spotsylvania, VA':[38.20,-77.59],'Smithfield, NC':[35.51,-78.34],
+  'Lake Nona, FL':[28.37,-81.24],'Milton, FL':[30.63,-87.04],'Prosperity, SC':[34.21,-81.53],
+  'Kenansville, NC':[34.96,-77.96],'Wetumpka, AL':[32.54,-86.21],
+  'Havelock, NC':[34.88,-76.90],'Bluffton, SC':[32.24,-80.86],'Pooler, GA':[32.12,-81.25],
+  'Fernandina Beach, FL':[30.67,-81.44],'Palm Coast, FL':[29.58,-81.21],'Spring Hill, FL':[28.48,-82.53],
+  'Cape Canaveral, FL':[28.41,-80.61],'Port Charlotte, FL':[26.98,-82.09],'Estero, FL':[26.44,-81.81],
+  'Punta Gorda, FL':[26.93,-82.05],'Marco Island, FL':[25.94,-81.72],'Key West, FL':[24.56,-81.78],
+  'Sun City Center, FL':[27.72,-82.35],'Riverview, FL':[27.87,-82.33],'Brandon, FL':[27.94,-82.29]
 };
 
 // State centroid lat/lng (fallback for unknown cities)
@@ -3232,23 +3245,34 @@ async function geomapRender() {
     const features=topoFeatures(topo,'states');
 
     // Calibrate projection against actual SVG state positions
-    // The us-atlas data uses fitSize which differs from default Albers params
+    // The us-atlas data uses fitSize which changes scale+translate uniformly
+    // Use ALL lower-48 states for best-fit uniform affine: fit = s*proj + offset
     const svgCentroids={};
-    features.forEach(f=>{const st=FIPS_TO_STATE[f.id]||'';if(st&&f.centroid)svgCentroids[st]=f.centroid;});
-    const REF_STATES={'FL':[28.6,-82.4],'NC':[35.5,-79.8],'TX':[31.5,-99.3],'OH':[40.4,-82.7],'GA':[33.0,-83.5],'VA':[37.5,-78.8],'NY':[42.9,-75.5],'IL':[40.0,-89.2]};
+    features.forEach(f=>{const st=FIPS_TO_STATE[f.id]||'';if(st&&f.centroid&&st!=='AK'&&st!=='HI')svgCentroids[st]=f.centroid;});
     const refs=[];
-    Object.entries(REF_STATES).forEach(([st,[lat,lng]])=>{
-      if(svgCentroids[st]){const [px,py]=projectAlbersUSA(lat,lng);refs.push({px,py,sx:svgCentroids[st][0],sy:svgCentroids[st][1]});}
+    Object.entries(svgCentroids).forEach(([st,svgC])=>{
+      if(STATE_CENTER_GEO[st]){
+        const [lat,lng]=STATE_CENTER_GEO[st];
+        const [px,py]=projectAlbersUSA(lat,lng);
+        refs.push({px,py,fx:svgC[0],fy:svgC[1]});
+      }
     });
-    let calSx=1,calDx=0,calSy=1,calDy=0;
-    if(refs.length>=2){
-      const n=refs.length;let spx=0,spy=0,ssx=0,ssy=0,spx2=0,spy2=0,spxsx=0,spysy=0;
-      refs.forEach(r=>{spx+=r.px;spy+=r.py;ssx+=r.sx;ssy+=r.sy;spx2+=r.px*r.px;spy2+=r.py*r.py;spxsx+=r.px*r.sx;spysy+=r.py*r.sy;});
-      const detX=n*spx2-spx*spx,detY=n*spy2-spy*spy;
-      if(Math.abs(detX)>0.01){calSx=(n*spxsx-spx*ssx)/detX;calDx=(ssx-calSx*spx)/n;}
-      if(Math.abs(detY)>0.01){calSy=(n*spysy-spy*ssy)/detY;calDy=(ssy-calSy*spy)/n;}
+    // Uniform scale least-squares: fit = s*proj + [dx,dy]
+    let calS=1,calDx=0,calDy=0;
+    if(refs.length>=3){
+      const n=refs.length;
+      let mPx=0,mPy=0,mFx=0,mFy=0;
+      refs.forEach(r=>{mPx+=r.px;mPy+=r.py;mFx+=r.fx;mFy+=r.fy;});
+      mPx/=n;mPy/=n;mFx/=n;mFy/=n;
+      let num=0,den=0;
+      refs.forEach(r=>{
+        const dpx=r.px-mPx,dpy=r.py-mPy,dfx=r.fx-mFx,dfy=r.fy-mFy;
+        num+=dpx*dfx+dpy*dfy;
+        den+=dpx*dpx+dpy*dpy;
+      });
+      if(den>0.01){calS=num/den;calDx=mFx-calS*mPx;calDy=mFy-calS*mPy;}
     }
-    function projectCal(lat,lng){const [px,py]=projectAlbersUSA(lat,lng);return [calSx*px+calDx,calSy*py+calDy];}
+    function projectCal(lat,lng){const [px,py]=projectAlbersUSA(lat,lng);return [calS*px+calDx,calS*py+calDy];}
 
     let svg='<svg viewBox="0 0 960 600" style="width:100%;max-width:960px;height:auto;display:block;margin:0 auto;background:#f8fafc;border-radius:8px;">';
 
