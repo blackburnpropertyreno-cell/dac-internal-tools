@@ -3023,18 +3023,17 @@ function workloadRender() {
   ctr.innerHTML = html;
 }
 
-// ---- US JOB MAP (Tile Grid) ----
-const STATE_GRID = {
-  'AK':[0,0],'ME':[11,0],
-  'WI':[5,1],'VT':[9,1],'NH':[10,1],
-  'WA':[0,2],'ID':[1,2],'MT':[2,2],'ND':[3,2],'MN':[4,2],'IL':[5,2],'MI':[6,2],'NY':[8,2],'MA':[9,2],'CT':[10,2],
-  'OR':[0,3],'NV':[1,3],'WY':[2,3],'SD':[3,3],'IA':[4,3],'IN':[5,3],'OH':[6,3],'PA':[7,3],'NJ':[8,3],'RI':[9,3],
-  'CA':[0,4],'UT':[1,4],'CO':[2,4],'NE':[3,4],'MO':[4,4],'KY':[5,4],'WV':[6,4],'VA':[7,4],'MD':[8,4],'DE':[9,4],
-  'AZ':[1,5],'NM':[2,5],'KS':[3,5],'AR':[4,5],'TN':[5,5],'NC':[6,5],'SC':[7,5],'DC':[8,5],
-  'OK':[3,6],'LA':[4,6],'MS':[5,6],'AL':[6,6],'GA':[7,6],'FL':[8,6],
-  'HI':[0,6],'TX':[3,7]
+// ---- US JOB MAP (Real SVG with city markers) ----
+const FIPS_TO_STATE = {
+  '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT',
+  '10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL',
+  '18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD',
+  '25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE',
+  '32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND',
+  '39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD',
+  '47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV',
+  '55':'WI','56':'WY'
 };
-
 const STATE_NAMES = {
   'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California',
   'CO':'Colorado','CT':'Connecticut','DE':'Delaware','DC':'D.C.','FL':'Florida',
@@ -3050,116 +3049,229 @@ const STATE_NAMES = {
   'WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming'
 };
 
-function geomapRender() {
+// City lat/lng lookup for Albers projection
+const CITY_GEO = {
+  'Charlotte, NC':[35.23,-80.84],'Raleigh, NC':[35.78,-78.64],'Durham, NC':[35.99,-78.90],
+  'Greensboro, NC':[36.07,-79.79],'Asheville, NC':[35.60,-82.55],'Wilmington, NC':[34.23,-77.94],
+  'Orlando, FL':[28.54,-81.38],'Fort Lauderdale, FL':[26.12,-80.14],'Miami, FL':[25.76,-80.19],
+  'Tampa, FL':[27.95,-82.46],'Jacksonville, FL':[30.33,-81.66],'Davie, FL':[26.06,-80.23],
+  'Boca Grande, FL':[26.75,-82.26],'Boca Raton, FL':[26.36,-80.08],'West Palm Beach, FL':[26.71,-80.05],
+  'Sarasota, FL':[27.34,-82.53],'Naples, FL':[26.14,-81.79],'Pensacola, FL':[30.42,-87.22],
+  'Gainesville, FL':[29.65,-82.32],'St. Petersburg, FL':[27.77,-82.64],'Clearwater, FL':[27.97,-82.76],
+  'Tallahassee, FL':[30.44,-84.28],'Doral, FL':[25.82,-80.35],'Coral Gables, FL':[25.72,-80.27],
+  'Hollywood, FL':[26.01,-80.15],'Aventura, FL':[25.96,-80.14],'Plantation, FL':[26.13,-80.25],
+  'Sunrise, FL':[26.13,-80.11],'Pompano Beach, FL':[26.24,-80.12],'Deerfield Beach, FL':[26.32,-80.10],
+  'Delray Beach, FL':[26.46,-80.07],'Lake Worth, FL':[26.62,-80.06],'Jupiter, FL':[26.93,-80.09],
+  'Stuart, FL':[27.20,-80.25],'Port St. Lucie, FL':[27.27,-80.35],'Vero Beach, FL':[27.64,-80.39],
+  'Melbourne, FL':[28.08,-80.61],'Cocoa Beach, FL':[28.32,-80.61],'Daytona Beach, FL':[29.21,-81.02],
+  'Ocala, FL':[29.19,-82.14],'Lakeland, FL':[28.04,-81.95],'Kissimmee, FL':[28.29,-81.41],
+  'Fort Myers, FL':[26.64,-81.87],'Cape Coral, FL':[26.56,-81.95],'Bonita Springs, FL':[26.34,-81.78],
+  'Atlanta, GA':[33.75,-84.39],'Savannah, GA':[32.08,-81.09],'Augusta, GA':[33.47,-81.97],
+  'Macon, GA':[32.84,-83.63],'Athens, GA':[33.96,-83.38],'Columbus, GA':[32.46,-84.99],
+  'Charleston, SC':[32.78,-79.93],'Columbia, SC':[34.00,-81.03],'Greenville, SC':[34.85,-82.39],
+  'Richmond, VA':[37.54,-77.44],'Virginia Beach, VA':[36.85,-75.98],'Norfolk, VA':[36.85,-76.29],
+  'Alexandria, VA':[38.80,-77.05],'Arlington, VA':[38.88,-77.10],
+  'Houston, TX':[29.76,-95.37],'Dallas, TX':[32.78,-96.80],'Austin, TX':[30.27,-97.74],
+  'San Antonio, TX':[29.42,-98.49],'Fort Worth, TX':[32.76,-97.33],'El Paso, TX':[31.76,-106.44],
+  'Nashville, TN':[36.16,-86.78],'Memphis, TN':[35.15,-90.05],'Knoxville, TN':[35.96,-83.92],
+  'Columbus, OH':[39.96,-82.99],'Cleveland, OH':[41.50,-81.69],'Cincinnati, OH':[39.10,-84.51],
+  'Washington, DC':[38.91,-77.04],'New York, NY':[40.71,-74.01],'Boston, MA':[42.36,-71.06],
+  'Chicago, IL':[41.88,-87.63],'Los Angeles, CA':[34.05,-118.24],'Denver, CO':[39.74,-104.99],
+  'Phoenix, AZ':[33.45,-112.07],'New Orleans, LA':[29.95,-90.07],'Birmingham, AL':[33.52,-86.80],
+  'Montgomery, AL':[32.38,-86.30],'Louisville, KY':[38.25,-85.76],'Indianapolis, IN':[39.77,-86.16],
+  'Detroit, MI':[42.33,-83.05],'Philadelphia, PA':[39.95,-75.16],'Pittsburgh, PA':[40.44,-79.99],
+  'Baltimore, MD':[39.29,-76.61],'Tuscaloosa, AL':[33.21,-87.57],'Mobile, AL':[30.69,-88.04],
+  'Hattiesburg, MS':[31.33,-89.29],'Jackson, MS':[32.30,-90.18],'Biloxi, MS':[30.40,-88.89],
+  'Little Rock, AR':[34.75,-92.29],'Oklahoma City, OK':[35.47,-97.52],'Tulsa, OK':[36.15,-95.99],
+  'Kansas City, MO':[39.10,-94.58],'St. Louis, MO':[38.63,-90.20],
+  'San Diego, CA':[32.72,-117.16],'San Francisco, CA':[37.77,-122.42],'Seattle, WA':[47.61,-122.33],
+  'Portland, OR':[45.52,-122.68],'Las Vegas, NV':[36.17,-115.14],'Salt Lake City, UT':[40.76,-111.89],
+  'Albuquerque, NM':[35.08,-106.65],'Reno, NV':[39.53,-119.81]
+};
+
+// State centroid lat/lng (fallback for unknown cities)
+const STATE_CENTER_GEO = {
+  'AL':[32.8,-86.8],'AK':[64.0,-153.5],'AZ':[34.3,-111.7],'AR':[34.8,-92.2],
+  'CA':[37.2,-119.5],'CO':[39.0,-105.5],'CT':[41.6,-72.7],'DE':[39.0,-75.5],
+  'DC':[38.9,-77.0],'FL':[28.6,-82.4],'GA':[33.0,-83.5],'HI':[20.5,-157.5],
+  'ID':[44.4,-114.6],'IL':[40.0,-89.2],'IN':[39.9,-86.3],'IA':[42.0,-93.5],
+  'KS':[38.5,-98.3],'KY':[37.8,-85.7],'LA':[31.0,-92.0],'ME':[45.3,-69.2],
+  'MD':[39.0,-76.7],'MA':[42.3,-71.8],'MI':[44.3,-84.5],'MN':[46.3,-94.3],
+  'MS':[32.7,-89.7],'MO':[38.4,-92.5],'MT':[47.0,-109.6],'NE':[41.5,-99.8],
+  'NV':[39.5,-116.8],'NH':[43.7,-71.5],'NJ':[40.1,-74.7],'NM':[34.5,-106.0],
+  'NY':[42.9,-75.5],'NC':[35.5,-79.8],'ND':[47.4,-100.5],'OH':[40.4,-82.7],
+  'OK':[35.5,-97.5],'OR':[43.9,-120.6],'PA':[40.9,-77.8],'RI':[41.7,-71.5],
+  'SC':[33.9,-80.9],'SD':[44.4,-100.2],'TN':[35.9,-86.4],'TX':[31.5,-99.3],
+  'UT':[39.3,-111.7],'VT':[44.1,-72.6],'VA':[37.5,-78.8],'WA':[47.4,-120.5],
+  'WV':[38.6,-80.6],'WI':[44.6,-89.8],'WY':[43.0,-107.5]
+};
+
+// Albers USA projection (matches D3/us-atlas pre-projected data)
+function projectAlbersUSA(lat, lng) {
+  const R=Math.PI/180, p1=29.5*R, p2=45.5*R;
+  const n=(Math.sin(p1)+Math.sin(p2))/2;
+  const C=Math.cos(p1)**2+2*n*Math.sin(p1);
+  const r0=Math.sqrt(C)/n;
+  function proj(lam,phi){const rho=Math.sqrt(Math.max(0,C-2*n*Math.sin(phi)))/n;const th=n*lam;return[rho*Math.sin(th),r0-rho*Math.cos(th)];}
+  const [x,y]=proj((lng+96)*R, lat*R);
+  const [cx,cy]=proj(-0.6*R, 38.7*R);
+  return [480+1070*(x-cx), 250-1070*(y-cy)];
+}
+
+// Minimal TopoJSON decoder - converts topology to SVG path strings
+function topoFeatures(topo, name) {
+  const arcs=topo.arcs, tf=topo.transform;
+  function decArc(idx){const rev=idx<0,arc=arcs[rev?~idx:idx];let x=0,y=0;const c=arc.map(d=>{x+=d[0];y+=d[1];return[x*tf.scale[0]+tf.translate[0],y*tf.scale[1]+tf.translate[1]];});return rev?c.slice().reverse():c;}
+  function ring(r){let c=[];r.forEach(i=>{const d=decArc(i);c=c.concat(c.length?d.slice(1):d);});return 'M'+c.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L')+'Z';}
+  function path(g){if(g.type==='Polygon')return g.arcs.map(ring).join('');if(g.type==='MultiPolygon')return g.arcs.map(p=>p.map(ring).join('')).join('');return '';}
+  return topo.objects[name].geometries.map(g=>({id:g.id,path:path(g)}));
+}
+
+// Lookup city coordinates, fall back to state centroid with hash offset
+function getCityCoords(loc) {
+  if (CITY_GEO[loc]) return CITY_GEO[loc];
+  const m = loc.match(/,\s*([A-Z]{2})$/);
+  if (m && STATE_CENTER_GEO[m[1]]) {
+    const [lat,lng] = STATE_CENTER_GEO[m[1]];
+    let h=0; for(let i=0;i<loc.length;i++) h=loc.charCodeAt(i)+((h<<5)-h);
+    return [lat+(h%30-15)*0.05, lng+((h>>8)%30-15)*0.05];
+  }
+  return null;
+}
+
+async function geomapRender() {
+  const ctr = document.getElementById('geomap-chart');
   const today = new Date();
-  const stateCounts = {};
-  const stateJobs = {};
+  const stateCounts={}, stateJobs={}, cityCounts={}, cityJobsList={};
 
   jobsData.forEach(j => {
-    const loc = (j['Location'] || '').trim();
-    const match = loc.match(/,\s*([A-Z]{2})$/);
-    if (!match) return;
-    const st = match[1];
-
-    // Check if currently active
-    const start = dvParseDate(j['Start']);
-    let end = dvParseDate(j['End']);
-    if (!start) return;
-    if (!end) {
-      const dur = parseInt(j['Original Duration'] || 0);
-      if (dur > 0) end = new Date(start.getTime() + dur * 1.4 * 86400000);
-      else return;
-    }
-    if (start <= today && end >= today) {
-      stateCounts[st] = (stateCounts[st] || 0) + 1;
-      if (!stateJobs[st]) stateJobs[st] = [];
+    const loc=(j['Location']||'').trim();
+    const m=loc.match(/,\s*([A-Z]{2})$/);
+    if(!m) return;
+    const st=m[1];
+    const start=dvParseDate(j['Start']);
+    let end=dvParseDate(j['End']);
+    if(!start) return;
+    if(!end){const dur=parseInt(j['Original Duration']||0);if(dur>0)end=new Date(start.getTime()+dur*1.4*86400000);else return;}
+    if(start<=today&&end>=today){
+      stateCounts[st]=(stateCounts[st]||0)+1;
+      if(!stateJobs[st])stateJobs[st]=[];
       stateJobs[st].push(j);
+      cityCounts[loc]=(cityCounts[loc]||0)+1;
+      if(!cityJobsList[loc])cityJobsList[loc]=[];
+      cityJobsList[loc].push(j);
     }
   });
 
-  const maxJobs = Math.max(...Object.values(stateCounts), 1);
+  const maxJobs=Math.max(...Object.values(stateCounts),1);
+  function heatColor(c){if(c===0)return'#eef2f7';const t=c/maxJobs;if(t<=0.15)return'#dce8f5';if(t<=0.3)return'#b8d4ed';if(t<=0.5)return'#7fb8de';if(t<=0.75)return'#4292c6';return'#1a5f9e';}
 
-  function heatColor(count) {
-    if (count === 0) return '#f0f0f0';
-    const t = count / maxJobs;
-    if (t <= 0.2) return '#c6dbef';
-    if (t <= 0.4) return '#6baed6';
-    if (t <= 0.6) return '#3182bd';
-    if (t <= 0.8) return '#2171b5';
-    return '#08306b';
-  }
-  function textColor(count) {
-    if (count === 0) return '#aaa';
-    return (count / maxJobs) > 0.4 ? '#fff' : '#1a1a2e';
-  }
+  // Summary stats
+  const totalStates=Object.keys(stateCounts).length;
+  const totalActive=Object.values(stateCounts).reduce((a,b)=>a+b,0);
+  const topEntries=Object.entries(stateCounts).sort((a,b)=>b[1]-a[1]);
+  const topState=topEntries[0];
+  const totalCities=Object.keys(cityCounts).length;
 
-  // Precompute tooltips
-  window._geoTips = {};
-  Object.keys(STATE_GRID).forEach(st => {
-    const count = stateCounts[st] || 0;
-    const name = STATE_NAMES[st] || st;
-    let h = '<b>' + name + ' (' + st + ')</b><br>' + count + ' active job' + (count !== 1 ? 's' : '');
-    if (count > 0) {
-      h += '<br><br>';
-      const jobs = stateJobs[st] || [];
-      jobs.slice(0, 8).forEach(j => {
-        const sup = j['Superintendent'] || '';
-        const jn = (j['Job Name'] || '').replace(/</g,'&lt;').substring(0, 30);
-        h += '<span style="color:' + dvSuperColor(sup) + ';">&#9679;</span> ' + (j['Job Number'] || '') + ' - ' + jn + '<br>';
-      });
-      if (jobs.length > 8) h += '<span style="color:#999;">+' + (jobs.length - 8) + ' more</span>';
-    }
-    window._geoTips[st] = h;
+  let html='<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">';
+  html+='<div style="background:#f0f7ff;border-radius:8px;padding:10px 16px;text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--blue);">'+totalActive+'</div><div style="font-size:10px;color:var(--text-faint);">Active Jobs</div></div>';
+  html+='<div style="background:#f0fdf4;border-radius:8px;padding:10px 16px;text-align:center;"><div style="font-size:24px;font-weight:700;color:#22c55e;">'+totalCities+'</div><div style="font-size:10px;color:var(--text-faint);">Cities</div></div>';
+  html+='<div style="background:#fef3c7;border-radius:8px;padding:10px 16px;text-align:center;"><div style="font-size:24px;font-weight:700;color:#d97706;">'+totalStates+'</div><div style="font-size:10px;color:var(--text-faint);">States</div></div>';
+  if(topState) html+='<div style="background:#fce4ec;border-radius:8px;padding:10px 16px;text-align:center;"><div style="font-size:18px;font-weight:700;color:#c62828;">'+(STATE_NAMES[topState[0]]||topState[0])+'</div><div style="font-size:10px;color:var(--text-faint);">Most Jobs ('+topState[1]+')</div></div>';
+  html+='</div>';
+
+  html+='<div id="geomap-svg-ctr" style="text-align:center;padding:40px 0;color:var(--text-faint);font-size:13px;">Loading US map...</div>';
+
+  // Legend
+  html+='<div id="geomap-legend" style="display:none;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px;justify-content:center;font-size:11px;">';
+  html+='<span style="color:var(--text-faint);font-weight:600;">State shading:</span><span style="color:var(--text-faint);">fewer</span>';
+  ['#eef2f7','#b8d4ed','#4292c6','#1a5f9e'].forEach(c=>{html+='<div style="width:24px;height:12px;background:'+c+';border-radius:2px;border:1px solid rgba(0,0,0,0.1);"></div>';});
+  html+='<span style="color:var(--text-faint);">more</span>';
+  html+='<span style="margin-left:12px;color:var(--text-faint);font-weight:600;">Dots = job sites (size = count)</span>';
+  html+='</div>';
+
+  ctr.innerHTML=html;
+
+  // Precompute tooltips per state
+  window._geoTips={};
+  Object.keys(stateCounts).forEach(st=>{
+    const count=stateCounts[st]||0;
+    const name=STATE_NAMES[st]||st;
+    let h='<b>'+name+' ('+st+')</b><br>'+count+' active job'+(count!==1?'s':'');
+    if(count>0){h+='<br><br>';(stateJobs[st]||[]).slice(0,8).forEach(j=>{const sup=j['Superintendent']||'';h+='<span style="color:'+dvSuperColor(sup)+';">&#9679;</span> '+(j['Job Number']||'')+' - '+(j['Job Name']||'').replace(/</g,'&lt;').substring(0,30)+'<br>';});if(stateJobs[st].length>8)h+='<span style="color:#999;">+'+(stateJobs[st].length-8)+' more</span>';}
+    window._geoTips[st]=h;
   });
 
-  const ctr = document.getElementById('geomap-chart');
-  const tileW = 58, tileH = 46, gap = 3;
-  let html = '';
+  // Precompute city tooltips
+  window._cityTips={};
+  let cityIdx=0;
+  Object.entries(cityJobsList).forEach(([loc,jobs])=>{
+    let h='<b>'+loc.replace(/</g,'&lt;')+'</b><br>'+jobs.length+' active job'+(jobs.length!==1?'s':'')+'<br><br>';
+    jobs.slice(0,10).forEach(j=>{const sup=j['Superintendent']||'';h+='<span style="color:'+dvSuperColor(sup)+';">&#9679;</span> '+(j['Job Number']||'')+' - '+(j['Job Name']||'').replace(/</g,'&lt;').substring(0,28)+'<br>';});
+    if(jobs.length>10)h+='<span style="color:#999;">+'+(jobs.length-10)+' more</span>';
+    window._cityTips['c'+cityIdx]=h;
+    cityIdx++;
+  });
 
-  // Summary
-  const totalStates = Object.keys(stateCounts).length;
-  const totalActive = Object.values(stateCounts).reduce((a, b) => a + b, 0);
-  const topEntries = Object.entries(stateCounts).sort((a, b) => b[1] - a[1]);
-  const topState = topEntries[0];
+  // Fetch real state outlines
+  try {
+    const resp=await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-albers-10m.json');
+    const topo=await resp.json();
+    const features=topoFeatures(topo,'states');
 
-  html += '<div style="display:flex; gap:16px; margin-bottom:20px; flex-wrap:wrap;">';
-  html += '<div style="background:#f0f7ff; border-radius:8px; padding:10px 16px; text-align:center;"><div style="font-size:24px; font-weight:700; color:var(--blue);">' + totalStates + '</div><div style="font-size:10px; color:var(--text-faint);">Active States</div></div>';
-  html += '<div style="background:#f0fdf4; border-radius:8px; padding:10px 16px; text-align:center;"><div style="font-size:24px; font-weight:700; color:#22c55e;">' + totalActive + '</div><div style="font-size:10px; color:var(--text-faint);">Active Jobs</div></div>';
-  if (topState) {
-    html += '<div style="background:#fef3c7; border-radius:8px; padding:10px 16px; text-align:center;"><div style="font-size:20px; font-weight:700; color:#d97706;">' + (STATE_NAMES[topState[0]] || topState[0]) + '</div><div style="font-size:10px; color:var(--text-faint);">Most Jobs (' + topState[1] + ')</div></div>';
+    let svg='<svg viewBox="0 0 960 600" style="width:100%;max-width:960px;height:auto;display:block;margin:0 auto;background:#f8fafc;border-radius:8px;">';
+
+    // Draw state fills
+    features.forEach(f=>{
+      const st=FIPS_TO_STATE[f.id]||'';
+      const count=stateCounts[st]||0;
+      const fill=heatColor(count);
+      svg+='<path d="'+f.path+'" fill="'+fill+'" stroke="#fff" stroke-width="1" style="cursor:pointer;transition:fill-opacity 0.15s;"';
+      if(st&&window._geoTips[st]){
+        svg+=' onmouseenter="this.style.fillOpacity=0.7;dvShowTooltip(event,window._geoTips[\''+st+'\'])"';
+        svg+=' onmousemove="ganttMoveTip(event)"';
+        svg+=' onmouseleave="this.style.fillOpacity=1;dvHideTooltip()"';
+      }
+      svg+='/>';
+    });
+
+    // Draw city markers
+    let ci=0;
+    Object.entries(cityCounts).forEach(([loc,count])=>{
+      const geo=getCityCoords(loc);
+      if(!geo) return;
+      const [px,py]=projectAlbersUSA(geo[0],geo[1]);
+      if(px<0||px>960||py<0||py>600) return;
+      const r=Math.max(4, Math.min(16, 3+count*1.8));
+      // Determine dominant superintendent for color
+      const jobs=cityJobsList[loc]||[];
+      const supCount={};
+      jobs.forEach(j=>{const s=(j['Superintendent']||'').trim();if(s)supCount[s]=(supCount[s]||0)+1;});
+      const topSup=Object.entries(supCount).sort((a,b)=>b[1]-a[1])[0];
+      const dotColor=topSup?dvSuperColor(topSup[0]):'#ef4444';
+      const tipKey='c'+ci;
+
+      svg+='<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="'+r+'" fill="'+dotColor+'" fill-opacity="0.8" stroke="#fff" stroke-width="1.5" style="cursor:pointer;transition:r 0.15s;"';
+      svg+=' onmouseenter="this.setAttribute(\'r\','+(r+3)+');dvShowTooltip(event,window._cityTips[\''+tipKey+'\'])"';
+      svg+=' onmousemove="ganttMoveTip(event)"';
+      svg+=' onmouseleave="this.setAttribute(\'r\','+r+');dvHideTooltip()"';
+      svg+='/>';
+
+      // City label for larger clusters
+      if(count>=3){
+        const cityName=loc.split(',')[0];
+        svg+='<text x="'+(px+r+3).toFixed(1)+'" y="'+(py+3).toFixed(1)+'" fill="#1a1a2e" font-size="8" font-weight="600" font-family="DM Sans,sans-serif" pointer-events="none">'+cityName+'</text>';
+      }
+      ci++;
+    });
+
+    svg+='</svg>';
+    document.getElementById('geomap-svg-ctr').innerHTML=svg;
+    document.getElementById('geomap-legend').style.display='flex';
+
+  } catch(err) {
+    document.getElementById('geomap-svg-ctr').innerHTML='<div style="color:#ef4444;padding:20px;font-size:12px;">Could not load map data. '+err.message+'</div>';
   }
-  html += '</div>';
-
-  // Tile map
-  html += '<div style="position:relative; width:' + (12 * (tileW + gap)) + 'px; height:' + (8 * (tileH + gap)) + 'px; margin:0 auto;">';
-
-  Object.entries(STATE_GRID).forEach(([st, [col, row]]) => {
-    const count = stateCounts[st] || 0;
-    const bg = heatColor(count);
-    const fg = textColor(count);
-    const left = col * (tileW + gap);
-    const top = row * (tileH + gap);
-    html += '<div style="position:absolute; left:' + left + 'px; top:' + top + 'px; width:' + tileW + 'px; height:' + tileH + 'px; background:' + bg + '; border-radius:5px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:transform 0.15s, box-shadow 0.15s; border:1px solid rgba(0,0,0,0.08);"';
-    html += ' onmouseenter="this.style.transform=\'scale(1.15)\';this.style.zIndex=10;this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.2)\';dvShowTooltip(event,window._geoTips[\'' + st + '\'])"';
-    html += ' onmousemove="ganttMoveTip(event)"';
-    html += ' onmouseleave="this.style.transform=\'scale(1)\';this.style.zIndex=1;this.style.boxShadow=\'none\';dvHideTooltip()">';
-    html += '<div style="font-size:11px; font-weight:700; color:' + fg + '; line-height:1;">' + st + '</div>';
-    if (count > 0) html += '<div style="font-size:9px; font-weight:600; color:' + fg + '; opacity:0.85; line-height:1; margin-top:2px;">' + count + '</div>';
-    html += '</div>';
-  });
-
-  html += '</div>';
-
-  // Color legend
-  html += '<div style="display:flex; align-items:center; gap:8px; margin-top:20px; justify-content:center; font-size:11px;">';
-  html += '<span style="color:var(--text-faint);">0 jobs</span>';
-  ['#f0f0f0','#c6dbef','#6baed6','#3182bd','#2171b5','#08306b'].forEach(c => {
-    html += '<div style="width:28px; height:14px; background:' + c + '; border-radius:3px; border:1px solid rgba(0,0,0,0.1);"></div>';
-  });
-  html += '<span style="color:var(--text-faint);">' + maxJobs + ' jobs</span>';
-  html += '</div>';
-
-  ctr.innerHTML = html;
 }
 
 // Initialize when Data Visualization tab is first shown
