@@ -2964,11 +2964,10 @@ function workloadRender() {
   const todayBucket = counts.find(c => c.week <= today && new Date(c.week.getTime() + msPerWeek) > today);
 
   html += '<div style="display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap;">';
-  html += '<div style="background:#f0f7ff; border-radius:8px; padding:10px 16px; text-align:center;"><div style="font-size:24px; font-weight:700; color:var(--blue);">' + peakWeek.count + '</div><div style="font-size:10px; color:var(--text-faint);">Peak Active Jobs</div><div style="font-size:9px; color:var(--text-faint);">' + peakLabel + '</div></div>';
   if (todayBucket) {
     html += '<div style="background:#f0fdf4; border-radius:8px; padding:10px 16px; text-align:center;"><div style="font-size:24px; font-weight:700; color:#22c55e;">' + todayBucket.count + '</div><div style="font-size:10px; color:var(--text-faint);">Active Right Now</div></div>';
   }
-  html += '<div style="background:#fef3c7; border-radius:8px; padding:10px 16px; text-align:center;"><div style="font-size:24px; font-weight:700; color:#d97706;">' + weeks.length + '</div><div style="font-size:10px; color:var(--text-faint);">Weeks Tracked</div></div>';
+  html += '<div style="background:#f0f7ff; border-radius:8px; padding:10px 16px; text-align:center;"><div style="font-size:24px; font-weight:700; color:var(--blue);">' + peakWeek.count + '</div><div style="font-size:10px; color:var(--text-faint);">Peak Active Jobs</div><div style="font-size:9px; color:var(--text-faint);">' + peakLabel + '</div></div>';
   html += '</div>';
 
   // Chart
@@ -3118,13 +3117,26 @@ function projectAlbersUSA(lat, lng) {
   return [480+1070*(x-cx), 250-1070*(y-cy)];
 }
 
-// Minimal TopoJSON decoder - converts topology to SVG path strings
+// Minimal TopoJSON decoder - converts topology to SVG path strings + centroids
 function topoFeatures(topo, name) {
   const arcs=topo.arcs, tf=topo.transform;
   function decArc(idx){const rev=idx<0,arc=arcs[rev?~idx:idx];let x=0,y=0;const c=arc.map(d=>{x+=d[0];y+=d[1];return[x*tf.scale[0]+tf.translate[0],y*tf.scale[1]+tf.translate[1]];});return rev?c.slice().reverse():c;}
-  function ring(r){let c=[];r.forEach(i=>{const d=decArc(i);c=c.concat(c.length?d.slice(1):d);});return 'M'+c.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L')+'Z';}
-  function path(g){if(g.type==='Polygon')return g.arcs.map(ring).join('');if(g.type==='MultiPolygon')return g.arcs.map(p=>p.map(ring).join('')).join('');return '';}
-  return topo.objects[name].geometries.map(g=>({id:g.id,path:path(g)}));
+  function ringPts(r){let c=[];r.forEach(i=>{const d=decArc(i);c=c.concat(c.length?d.slice(1):d);});return c;}
+  function ringPath(pts){return 'M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L')+'Z';}
+  function geom(g){
+    let pts=[],pathStr='';
+    if(g.type==='Polygon'){g.arcs.forEach(r=>{const p=ringPts(r);pts=pts.concat(p);pathStr+=ringPath(p);});}
+    else if(g.type==='MultiPolygon'){g.arcs.forEach(poly=>poly.forEach(r=>{const p=ringPts(r);pts=pts.concat(p);pathStr+=ringPath(p);}));}
+    return {pts,path:pathStr};
+  }
+  return topo.objects[name].geometries.map(g=>{
+    const {pts,path}=geom(g);
+    // Bounding-box center as centroid proxy
+    let mnX=Infinity,mxX=-Infinity,mnY=Infinity,mxY=-Infinity;
+    pts.forEach(p=>{if(p[0]<mnX)mnX=p[0];if(p[0]>mxX)mxX=p[0];if(p[1]<mnY)mnY=p[1];if(p[1]>mxY)mxY=p[1];});
+    const centroid=pts.length?[(mnX+mxX)/2,(mnY+mxY)/2]:null;
+    return {id:g.id,path,centroid};
+  });
 }
 
 // Lookup city coordinates, fall back to state centroid with hash offset
@@ -3219,6 +3231,25 @@ async function geomapRender() {
     const topo=await resp.json();
     const features=topoFeatures(topo,'states');
 
+    // Calibrate projection against actual SVG state positions
+    // The us-atlas data uses fitSize which differs from default Albers params
+    const svgCentroids={};
+    features.forEach(f=>{const st=FIPS_TO_STATE[f.id]||'';if(st&&f.centroid)svgCentroids[st]=f.centroid;});
+    const REF_STATES={'FL':[28.6,-82.4],'NC':[35.5,-79.8],'TX':[31.5,-99.3],'OH':[40.4,-82.7],'GA':[33.0,-83.5],'VA':[37.5,-78.8],'NY':[42.9,-75.5],'IL':[40.0,-89.2]};
+    const refs=[];
+    Object.entries(REF_STATES).forEach(([st,[lat,lng]])=>{
+      if(svgCentroids[st]){const [px,py]=projectAlbersUSA(lat,lng);refs.push({px,py,sx:svgCentroids[st][0],sy:svgCentroids[st][1]});}
+    });
+    let calSx=1,calDx=0,calSy=1,calDy=0;
+    if(refs.length>=2){
+      const n=refs.length;let spx=0,spy=0,ssx=0,ssy=0,spx2=0,spy2=0,spxsx=0,spysy=0;
+      refs.forEach(r=>{spx+=r.px;spy+=r.py;ssx+=r.sx;ssy+=r.sy;spx2+=r.px*r.px;spy2+=r.py*r.py;spxsx+=r.px*r.sx;spysy+=r.py*r.sy;});
+      const detX=n*spx2-spx*spx,detY=n*spy2-spy*spy;
+      if(Math.abs(detX)>0.01){calSx=(n*spxsx-spx*ssx)/detX;calDx=(ssx-calSx*spx)/n;}
+      if(Math.abs(detY)>0.01){calSy=(n*spysy-spy*ssy)/detY;calDy=(ssy-calSy*spy)/n;}
+    }
+    function projectCal(lat,lng){const [px,py]=projectAlbersUSA(lat,lng);return [calSx*px+calDx,calSy*py+calDy];}
+
     let svg='<svg viewBox="0 0 960 600" style="width:100%;max-width:960px;height:auto;display:block;margin:0 auto;background:#f8fafc;border-radius:8px;">';
 
     // Draw state fills
@@ -3240,7 +3271,7 @@ async function geomapRender() {
     Object.entries(cityCounts).forEach(([loc,count])=>{
       const geo=getCityCoords(loc);
       if(!geo) return;
-      const [px,py]=projectAlbersUSA(geo[0],geo[1]);
+      const [px,py]=projectCal(geo[0],geo[1]);
       if(px<0||px>960||py<0||py>600) return;
       const r=Math.max(4, Math.min(16, 3+count*1.8));
       // Determine dominant superintendent for color
